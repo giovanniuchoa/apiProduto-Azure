@@ -1,0 +1,103 @@
+name: $(Build.BuildNumber)-$(Date:yyyyMMdd)$(Rev:.r)
+
+trigger:
+  branches:
+    include:
+      - main
+      - develop
+      - release
+
+variables:
+  buildConfiguration: 'Release'
+  azureSubscription: 'AzureConnection'
+  webAppName: 'webapp-dotnet-produtos' 
+  resourceGroupName: 'DevOps'
+
+stages:
+  - stage: Build
+    displayName: 'Build stage'
+    jobs:
+      - job: Build
+        displayName: 'Build solution'
+        pool:
+          vmImage: 'windows-latest'
+        steps:
+          - task: DotNetCoreCLI@2
+            displayName: 'Restore dependencies'
+            inputs:
+              command: 'restore'
+              projects: '**/*.csproj'
+              feedsToUse: 'select'
+              
+          - task: DotNetCoreCLI@2
+            displayName: 'Build solution'
+            inputs:
+              command: 'build'
+              arguments: '--configuration $(buildConfiguration) --no-restore'
+              projects: '**/*.csproj'
+              
+          - task: DotNetCoreCLI@2
+            displayName: 'Publish artifacts'
+            inputs:
+              command: 'publish'
+              arguments: '--configuration $(buildConfiguration) --output $(Build.ArtifactStagingDirectory) --no-build'
+              publishWebProjects: true
+              zipAfterPublish: true
+              
+          - task: PublishPipelineArtifact@1
+            displayName: 'Publish artifact'
+            inputs:
+              targetPath: '$(Build.ArtifactStagingDirectory)'
+              artifact: 'drop'
+              publishLocation: 'pipeline'
+
+  - stage: Test
+    displayName: 'Test stage'
+    dependsOn: Build
+    jobs:
+      - job: Test
+        displayName: 'Run tests'
+        pool:
+          vmImage: 'windows-latest'
+        steps:
+          - task: DotNetCoreCLI@2
+            displayName: 'Run unit tests'
+            inputs:
+              command: 'test'
+              projects: '**/*Tests.csproj'
+              arguments: '--configuration $(buildConfiguration) --collect "Code coverage" --no-build'
+              
+          - task: PublishTestResults@2
+            displayName: 'Publish test results'
+            inputs:
+              testResultsFormat: 'VSTest'
+              testResultsFiles: '**/*.trx'
+              mergeTestResults: true
+              failTaskOnFailedTests: true
+
+  - stage: Deploy
+    displayName: 'Deploy stage'
+    dependsOn: Test
+    jobs:
+      - deployment: Deploy
+        displayName: 'Deploy to Azure App Service'
+        environment: 'Production'
+        pool:
+          vmImage: 'windows-latest'  # Garante agente Windows para WebDeploy
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - download: current
+                  artifact: drop
+                  
+                - task: AzureRmWebAppDeployment@4
+                  displayName: 'Deploy Azure App Service'
+                  inputs:
+                    ConnectionType: 'AzureRM'
+                    azureSubscription: $(azureSubscription)
+                    appType: 'webApp'
+                    WebAppName: $(webAppName)
+                    ResourceGroupName: $(resourceGroupName)
+                    package: '$(Pipeline.Workspace)/drop/**/*.zip'  # Alterado de packageForLinux para package
+                    enableCustomDeployment: true
