@@ -4,7 +4,7 @@ using Microsoft.OpenApi.Models;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Adicionar serviços ao container
+// Adicionar serviÃ§os ao container
 builder.Services.AddControllers();
 
 // Configurar Swagger
@@ -15,7 +15,7 @@ builder.Services.AddSwaggerGen(c =>
     {
         Title = "API Meu CRUD Azure",
         Version = "v1",
-        Description = "Documentação da API para o CRUD no Azure",
+        Description = "DocumentaÃ§Ã£oas da API para o CRUD no Azure",
         Contact = new OpenApiContact
         {
             Name = "Seu Nome",

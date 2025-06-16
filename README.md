@@ -25,4 +25,4 @@
 - Arquivo de configuração: `azure-pipelines.yml`
 - Stages implementados: build, test, deploy
 - Deploy realizado no: **Azure App Service** (webapp-dotnet-produtos)
-- Banco de dados: **DBaaS** - SQL Server (sql-server-grupo8)
+- Banco de dados: **DBaaS** - SQL Server (sql-server-grupo8).
